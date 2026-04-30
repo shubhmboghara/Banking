@@ -1,17 +1,25 @@
 import APiResponse from "../util/ApiResponse.js";
+import APiError from "../util/AppError.js";
 import asyncHandler from "../util/asyncHandler.js";
+import Transaction from "../models/transaction.model.js";
 
-// Small helper so every controller returns the same API shape.
 const respond = (res, statusCode, data = {}, message = "Success") =>
   res.status(statusCode).json(new APiResponse(statusCode, data, message));
 
-// Template: replace this with real transaction creation logic later.
-const createTransaction = asyncHandler(async (req, res) => {
-  return respond(res, 201, { transaction: null }, "Transaction template");
+const createTransaction = asyncHandler(async (_req, res) => {
+
+  const { fromAccount, toAccount, amount, idempotencyKey } = req.body;
+
+  if (!fromAccount || !toAccount || !amount || !idempotencyKey) {
+    throw new APiError(400, "fromAccount, toAccount, amount and idempotencyKey are required");
+  }
+
+
+  return respond(res, 201, { transaction:  }, "Transaction template");
+
 });
 
-// Template: replace this with real initial-funds logic later.
-const createInitialFundsTransaction = asyncHandler(async (req, res) => {
+const createInitialFundsTransaction = asyncHandler(async (_req, res) => {
   return respond(res, 201, { transaction: null }, "Initial funds template");
 });
 

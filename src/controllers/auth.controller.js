@@ -3,7 +3,7 @@ import APiResponse from "../util/ApiResponse.js";
 import asyncHandler from "../util/asyncHandler.js";
 import { User } from "../models/user.model.js";
 import { sessionCookieOptions } from "../config/session.js";
-
+import { sendRegistrationEmail } from "../services/email.service.js";
 /**
  * - user register controller
  * - POST /api/auth/register
@@ -28,6 +28,8 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   const createdUser = await User.findById(newUser._id).select("-password");
+  
+  await sendRegistrationEmail(email, name);
 
   return res
     .status(201)
