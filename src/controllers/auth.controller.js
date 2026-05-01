@@ -28,7 +28,7 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   const createdUser = await User.findById(newUser._id).select("-password");
-  
+
   await sendRegistrationEmail(email, name);
 
   return res

@@ -11,15 +11,14 @@ const respond = (res, statusCode, data = {}, message = "Success") =>
 
 const createAccount = asyncHandler(async (req, res) => {
   const user = req.user;
-  
+
   if (!user) {
     throw new APiError(401, "Unauthorized");
   }
   const account = await Account.create({
-     user:user._id
-  })
+    user: user._id,
+  });
 
-  
   return respond(res, 201, { Account: account }, "Account template");
 });
 
@@ -32,8 +31,4 @@ const getAccountBalance = asyncHandler(async (req, res) => {
   return respond(res, 200, { accountId, balance: null }, "Balance template");
 });
 
-export {
-  createAccount,
-  getUserAccounts,
-  getAccountBalance,
-};
+export { createAccount, getUserAccounts, getAccountBalance };

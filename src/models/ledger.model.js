@@ -1,5 +1,5 @@
 import { Schema, model } from "mongoose";
-import APiError from "../util/AppError";
+import APiError from "../util/AppError.js";
 
 const ledgerSchema = new Schema({
   account: {
@@ -19,7 +19,7 @@ const ledgerSchema = new Schema({
     ref: "transaction",
     required: [true, "Ledger must be associated with a transaction"],
     index: true,
-    immutable: true, 
+    immutable: true,
   },
   type: {
     type: String,
@@ -33,21 +33,33 @@ const ledgerSchema = new Schema({
 });
 
 function preventLedgerModification() {
-   throw new APiError("Ledger entries cannot be modified or deleted once created", 400);
+  throw new APiError(
+    "Ledger entries cannot be modified or deleted once created",
+    400,
+  );
 }
 
-ledgerSchema.pre('findOneAndDelete', preventLedgerModification);
-ledgerSchema.pre('findOneAndUpdate', preventLedgerModification);
-ledgerSchema.pre('updateMany', preventLedgerModification);
-ledgerSchema.pre('update', preventLedgerModification);
-ledgerSchema.pre('deleteOne', { document: true, query: true }, preventLedgerModification);
-ledgerSchema.pre('updateOne', { document: true, query: true }, preventLedgerModification);ledgerSchema.pre('deleteMany', preventLedgerModification);
-ledgerSchema.pre('remove', preventLedgerModification);
-ledgerSchema.pre('findOneAndRemove', preventLedgerModification);
-ledgerSchema.pre('findOneAndReplace', preventLedgerModification);
-ledgerSchema.pre('replaceOne', preventLedgerModification);
-ledgerSchema.pre('bulkWrite', preventLedgerModification);
-ledgerSchema.pre('save', preventLedgerModification);
+ledgerSchema.pre("findOneAndDelete", preventLedgerModification);
+ledgerSchema.pre("findOneAndUpdate", preventLedgerModification);
+ledgerSchema.pre("updateMany", preventLedgerModification);
+ledgerSchema.pre("update", preventLedgerModification);
+ledgerSchema.pre(
+  "deleteOne",
+  { document: true, query: true },
+  preventLedgerModification,
+);
+ledgerSchema.pre(
+  "updateOne",
+  { document: true, query: true },
+  preventLedgerModification,
+);
+ledgerSchema.pre("deleteMany", preventLedgerModification);
+ledgerSchema.pre("remove", preventLedgerModification);
+ledgerSchema.pre("findOneAndRemove", preventLedgerModification);
+ledgerSchema.pre("findOneAndReplace", preventLedgerModification);
+ledgerSchema.pre("replaceOne", preventLedgerModification);
+ledgerSchema.pre("bulkWrite", preventLedgerModification);
+ledgerSchema.pre("save", preventLedgerModification);
 
 const Ledger = model("Ledger", ledgerSchema);
 

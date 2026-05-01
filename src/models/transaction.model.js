@@ -27,7 +27,7 @@ const transactionSchema = new Schema(
       required: [true, "Amount is required for creating a transaction"],
       min: [0, "Transaction amount cannot be negative"],
     },
-    
+
     idempotencyKey: {
       type: String,
       required: [
