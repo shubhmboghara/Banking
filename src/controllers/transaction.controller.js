@@ -6,7 +6,7 @@ import Ledger from "../models/ledger.model.js";
 import { Account } from "../models/account.model.js";
 import mongoose from "mongoose";
 
-c
+
 
 const createTransaction = asyncHandler(async (req, res) => {
    

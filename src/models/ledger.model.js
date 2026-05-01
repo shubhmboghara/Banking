@@ -33,10 +33,7 @@ const ledgerSchema = new Schema({
 });
 
 function preventLedgerModification() {
-  throw new APiError(
-    "Ledger entries cannot be modified or deleted once created",
-    400,
-  );
+  throw new APiError(400, "Ledger entries cannot be modified or deleted once created");
 }
 
 ledgerSchema.pre("findOneAndDelete", preventLedgerModification);
@@ -59,8 +56,6 @@ ledgerSchema.pre("findOneAndRemove", preventLedgerModification);
 ledgerSchema.pre("findOneAndReplace", preventLedgerModification);
 ledgerSchema.pre("replaceOne", preventLedgerModification);
 ledgerSchema.pre("bulkWrite", preventLedgerModification);
-ledgerSchema.pre("save", preventLedgerModification);
-
 const Ledger = model("Ledger", ledgerSchema);
 
 export default Ledger;
