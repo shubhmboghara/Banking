@@ -6,11 +6,8 @@ import Ledger from "../models/ledger.model.js";
 import { Account } from "../models/account.model.js";
 import mongoose from "mongoose";
 
-
-
 const createTransaction = asyncHandler(async (req, res) => {
-   
-  const { fromAccount, toAccount, amount, idempotencyKey } = req.body;
+  const { toAccount, amount, idempotencyKey } = req.body;
 
   if (!fromAccount || !toAccount || !amount || !idempotencyKey) {
     throw new APiError(
@@ -19,9 +16,8 @@ const createTransaction = asyncHandler(async (req, res) => {
     );
   }
 
-  const toUserAccount = await Account.findOne({
-    // Acount to which money is being transferred
-    _id: toAccount,
+  const fromUserAccount = await accountModel.findOne({
+    userId: req.user._id,
   });
 
   if (!toUserAccount) {
@@ -38,50 +34,55 @@ const createTransaction = asyncHandler(async (req, res) => {
 
   // Check if transaction with the same idempotencyKey already exists
 
-    const isTransactionExists = await Transaction.findOne({ idempotencyKey:idempotencyKey });
+  const isTransactionExists = await Transaction.findOne({
+    idempotencyKey: idempotencyKey,
+  });
 
-    if(isTransactionExists){
-
-        if(isTransactionExists.status === "COMPLETED"){
-           throw new APiError(409, "Transaction with the same idempotency key already exists and is completed");  
-        }
-         
-        if(isTransactionExists.status === "PENDING"){
-              throw new APiError(409, "Transaction with the same idempotency key already exists and is pending");
-        }
-
-        if(isTransactionExists.status === "FAILED"){
-            throw new APiError(409, "Transaction with the same idempotency key already exists and is failed");
-        } 
-
-         if(isTransactionExists.status === "REVERSED"){
-            throw new APiError(409, "Transaction with the same idempotency key already exists and is reversed");
-         }
-
+  if (isTransactionExists) {
+    if (isTransactionExists.status === "COMPLETED") {
+      throw new APiError(
+        409,
+        "Transaction with the same idempotency key already exists and is completed",
+      );
     }
 
-    if(fromUserAccount.status === "ACTIVE" ){
-       throw new APiError(403, "From account is not active");
+    if (isTransactionExists.status === "PENDING") {
+      throw new APiError(
+        409,
+        "Transaction with the same idempotency key already exists and is pending",
+      );
     }
 
-    if(toUserAccount.status === "ACTIVE" ){
-        throw new APiError(403, "To account is not active");
+    if (isTransactionExists.status === "FAILED") {
+      throw new APiError(
+        409,
+        "Transaction with the same idempotency key already exists and is failed",
+      );
     }
-    
 
-  
+    if (isTransactionExists.status === "REVERSED") {
+      throw new APiError(
+        409,
+        "Transaction with the same idempotency key already exists and is reversed",
+      );
+    }
+  }
+
+  if (fromUserAccount.status === "ACTIVE") {
+    throw new APiError(403, "From account is not active");
+  }
+
+  if (toUserAccount.status === "ACTIVE") {
+    throw new APiError(403, "To account is not active");
+  }
+
   return res
     .status(201)
     .json(new APiResponse(201, { transaction: null }, "Transaction template"));
 });
 
-
-
-
-
 const createInitialFundsTransaction = asyncHandler(async (_req, res) => {
-
-        const { fromAccount, toAccount, amount, idempotencyKey } = req.body;
+  const { toAccount, amount, idempotencyKey } = req.body;
 
   if (!toAccount || !amount || !idempotencyKey) {
     throw new APiError(
@@ -100,7 +101,7 @@ const createInitialFundsTransaction = asyncHandler(async (_req, res) => {
   }
 
   const fromUserAccount = await Account.findOne({
-    _id: fromAccount || req.user._id,
+    _id: req.user._id,
   });
 
   if (!fromUserAccount) {
@@ -114,16 +115,13 @@ const createInitialFundsTransaction = asyncHandler(async (_req, res) => {
   // it means that all the operations within this transaction will either succeed or fail together. If any operation fails, the entire transaction will be rolled back, ensuring data integrity and consistency.
   session.startTransaction();
 
-  const transaction = await Transaction(
-    {
-      fromAccount: fromUserAccount._id,
-      toAccount: toUserAccount._id,
-      amount,
-      idempotencyKey,
-      status: "PENDING",
-    },
-   
-  );
+  const transaction = await Transaction({
+    fromAccount: fromUserAccount._id,
+    toAccount: toUserAccount._id,
+    amount,
+    idempotencyKey,
+    status: "PENDING",
+  });
 
   const debitLedgerEntry = await Ledger.create([
     {
@@ -132,7 +130,7 @@ const createInitialFundsTransaction = asyncHandler(async (_req, res) => {
       transaction: transaction._id,
       type: "DEBIT",
     },
-    { session },      
+    { session },
   ]);
 
   const creditLedgerEntry = await Ledger.create([
@@ -153,8 +151,13 @@ const createInitialFundsTransaction = asyncHandler(async (_req, res) => {
 
   return res
     .status()
-    .json(new APiResponse(201, { transaction }, "Initial funds transaction template"));
-
+    .json(
+      new APiResponse(
+        201,
+        { transaction },
+        "Initial funds transaction template",
+      ),
+    );
 });
 
 export { createTransaction, createInitialFundsTransaction };
