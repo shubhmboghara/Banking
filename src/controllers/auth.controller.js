@@ -4,6 +4,7 @@ import asyncHandler from "../util/asyncHandler.js";
 import { User } from "../models/user.model.js";
 import { sessionCookieOptions } from "../config/session.js";
 import { sendRegistrationEmail } from "../services/email.service.js";
+
 /**
  * - user register controller
  * - POST /api/auth/register
