@@ -54,13 +54,16 @@ const getAccountBalance = asyncHandler(async (req, res) => {
     throw new APiError(404, "Account not found");
   }
 
-  const balance = account.getBalance();
-
+  const balance = await account.getBalance();
 
   return res
     .status(200)
     .json(
-      new APiResponse(200, { accountId: account._id, balance: balance }, "Balance fetched successfully"),
+      new APiResponse(
+        200,
+        { accountId: account._id, balance: balance },
+        "Balance fetched successfully",
+      ),
     );
 });
 

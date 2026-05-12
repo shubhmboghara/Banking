@@ -33,7 +33,7 @@ const accountSchema = new Schema(
 accountSchema.index({ user: 1, status: 1 });
 
 accountSchema.methods.getBalance = async function () {
-  const balanceData = await Ledger.aggregate([
+  const balanceData = await ledgerModel.aggregate([
     { $match: { account: this._id } },
 
     {

@@ -26,7 +26,7 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(cookieParser());
-app.use(morgan("dev"));
+app.use(process.env.NODE_ENV === "production" ? morgan("combined") : morgan("dev"));
 
 app.get("/health", (_req, res) => {
   res.status(200).json({ success: true, message: "Server is healthy" });

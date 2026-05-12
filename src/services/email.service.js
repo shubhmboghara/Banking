@@ -1,35 +1,39 @@
+import nodemailer from "nodemailer";
 import dotenv from "dotenv";
-import nodemailer, { createTransport } from "nodemailer";
 
 dotenv.config();
 
 const emailBrand = "Backend Ledger";
-const emailFrom = `"${emailBrand}" <${process.env.EMAIL_USER}>`;
 
-const transporter = createTransport({
-  service: "gmail",
+const CLIENT_ID = (process.env.CLIENT_ID || '').trim();
+const CLIENT_SECRET = (process.env.CLIENT_SECRET || '').trim();
+const REFRESH_TOKEN = (process.env.REFRESH_TOKEN || '').trim();
+const EMAIL_USER = (process.env.EMAIL_USER || '').trim();
+const EMAIL_FROM = (process.env.EMAIL_FROM || EMAIL_USER || 'no-reply@backendledger.local').trim();
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
   auth: {
-    type: "OAuth2",
-    user: process.env.EMAIL_USER,
-    clientId: process.env.CLIENT_ID,
-    clientSecret: process.env.CLIENT_SECRET,
-    refreshToken: process.env.REFRESH_TOKEN,
+    type: 'OAuth2',
+    user: EMAIL_USER,
+    clientId: CLIENT_ID,
+    clientSecret: CLIENT_SECRET,
+    refreshToken: REFRESH_TOKEN,
   },
 });
 
-const sendEmail = async (to, subject, text, html) => {
+const sendEmail = async (to, subject, html) => {
   try {
     const info = await transporter.sendMail({
-      from: emailFrom,
+      from: `${emailBrand} <${EMAIL_FROM}>`,
       to,
       subject,
-      text,
       html,
     });
 
     return info;
   } catch (error) {
-    console.error("Error sending email:", error.message);
+    console.error('Error sending email:', error?.message || error);
     throw error;
   }
 };
@@ -37,7 +41,6 @@ const sendEmail = async (to, subject, text, html) => {
 async function sendRegistrationEmail(userEmail, name) {
   const safeName = name || "there";
   const subject = "Welcome to Backend Ledger";
-  const text = `Hi ${safeName},\n\nWelcome to Backend Ledger. Your account is ready and you can now start using the platform. If you need help, just reply to this email and our team will assist you.\n\nBest regards,\nBackend Ledger Team`;
   const html = `
     <div style="margin:0;padding:0;background:#f5f7fb;font-family:Arial,Helvetica,sans-serif;">
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f5f7fb;padding:32px 16px;">
@@ -68,13 +71,12 @@ async function sendRegistrationEmail(userEmail, name) {
       </table>
     </div>`;
 
-  await sendEmail(userEmail, subject, text, html);
+  await sendEmail(userEmail, subject, html);
 }
 
 const sendLoginEmail = async (userEmail, name) => {
   const safeName = name || "there";
   const subject = "New Login Alert";
-  const text = `Hi ${safeName},\n\nWe noticed a new login to your account. If this was you, you can safely ignore this email. If you did not log in, please reset your password immediately and contact our support team.\n\nBest regards,\nBackend Ledger Team`;
   const html = `
     <div style="margin:0;padding:0;background:#f5f7fb;font-family:Arial,Helvetica,sans-serif;">
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f5f7fb;padding:32px 16px;">
@@ -104,7 +106,7 @@ const sendLoginEmail = async (userEmail, name) => {
       </table>
     </div>`;
 
-  await sendEmail(userEmail, subject, text, html);
+  await sendEmail(userEmail, subject, html);
 };
 
 const sendTransactionEmail = async (
@@ -114,15 +116,18 @@ const sendTransactionEmail = async (
   toAccount,
   type,
 ) => {
+  if (!userEmail) {
+    throw new Error('Transaction email recipient is empty');
+  }
+
   const safeName = name || "there";
-  const subject = `Transaction Alert: ${type} of $${amount}`;
-  const text = `Hi ${safeName},\n\nA ${type} transaction of $${amount} has been made on your account. If you did not authorize this transaction, please contact our support team immediately.\n\nBest regards,\nBackend Ledger Team`;
+  const subject = `Transaction Alert: ${type} of ₹${amount} INR`;
   const html = `
     <div style="margin:0;padding:0;background:#f5f7fb;font-family:Arial,Helvetica,sans-serif;">
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f5f7fb;padding:32px 16px;">
         <tr>
           <td align="center">
-            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border-radius:20px;overflow:hidden;   box-shadow:0 12px 30px rgba(15,23,42,0.08);">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 12px 30px rgba(15,23,42,0.08);">
               <tr>
                 <td style="padding:32px 32px 24px;background:linear-gradient(135deg,#0f172a 0%,#1d4ed8 100%);color:#ffffff;">
                   <div style="font-size:14px;letter-spacing:1.4px;text-transform:uppercase;opacity:0.85;">${emailBrand}</div>
@@ -131,7 +136,7 @@ const sendTransactionEmail = async (
               </tr>
               <tr>
                 <td style="padding:32px;color:#0f172a;">
-                  <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">A ${type} transaction of $${amount} has been made on your account. If you did not authorize this transaction, please contact our support team immediately.</p>
+                  <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">A ${type} transaction of ₹${amount} INR has been made on your account. If you did not authorize this transaction, please contact our support team immediately.</p>
                   <div style="padding:16px 20px;border-radius:14px;background:#fee2e2;color:#b91c1c;font-weight:700;display:inline-block;">If this wasn't you, take action now!</div>
                 </td>
               </tr>
@@ -146,7 +151,7 @@ const sendTransactionEmail = async (
       </table>
     </div>`;
 
-  await sendEmail(userEmail, subject, text, html);
+  await sendEmail(userEmail, subject, html);
 };
 
 const sendTransactionfailedEmail = async (
@@ -156,9 +161,12 @@ const sendTransactionfailedEmail = async (
   toAccount,
   type,
 ) => {
+  if (!userEmail) {
+    throw new Error('Failed transaction email recipient is empty');
+  }
+
   const safeName = name || "there";
-  const subject = `Transaction Failed: ${type} of $${amount}`;
-  const text = `Hi ${safeName},\n\nWe wanted to let you know that a ${type} transaction of $${amount} has failed. If you were trying to make this transaction, please check your account details and try again. If you have any questions, feel free to contact our support team.\n\nBest regards,\nBackend Ledger Team`;
+  const subject = `Transaction Failed: ${type} of ₹${amount} INR`;
   const html = `
     <div style="margin:0;padding:0;background:#f5f7fb;font-family:Arial,Helvetica,sans-serif;">
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f5f7fb;padding:32px 16px;">
@@ -173,7 +181,7 @@ const sendTransactionfailedEmail = async (
               </tr>
               <tr>
                 <td style="padding:32px;color:#0f172a;">
-                  <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">We wanted to let you know that a ${type} transaction of $${amount} has failed. If you were trying to make this transaction, please check your account details and try again. If you have any questions, feel free to contact our support team.</p>
+                  <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">We wanted to let you know that a ${type} transaction of ₹${amount} INR has failed. If you were trying to make this transaction, please check your account details and try again. If you have any questions, feel free to contact our support team.</p>
                   <div style="padding:16px 20px;border-radius:14px;background:#fee2e2;color:#b91c1c;font-weight:700;display:inline-block;">If you need help, we're here for you!</div>
                 </td>
               </tr>
@@ -188,11 +196,10 @@ const sendTransactionfailedEmail = async (
       </table>
     </div>`;
 
-  await sendEmail(userEmail, subject, text, html);
+  await sendEmail(userEmail, subject, html);
 };
 
 export {
-  transporter,
   sendEmail,
   sendRegistrationEmail,
   sendLoginEmail,

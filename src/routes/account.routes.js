@@ -25,6 +25,6 @@ router.get("/", verifySession, getUserAccounts);
 /**
  * - GET /api/accounts/balance/:accountId
  */
-router.get("/balance/:accountId", verifySession, getAccountBalance);
+  router.get("/balance/:accountId", verifySession, getAccountBalance);
 
 export default router;

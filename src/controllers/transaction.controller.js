@@ -7,48 +7,37 @@ import { Account } from "../models/account.model.js";
 import { sendTransactionEmail } from "../services/email.service.js";
 import mongoose from "mongoose";
 
-// THE 10-STEP TRANSFER FLOW:
-//      * 1. Validate request
-//      * 2. Validate idempotency key
-//      * 3. Check account status
-//      * 4. Derive sender balance from ledger
-//      * 5. Create transaction (PENDING)
-//      * 6. Create DEBIT ledger entry
-//      * 7. Create CREDIT ledger entry
-//      * 8. Mark transaction COMPLETED
-//      * 9. Commit MongoDB session
-//      * 10. Send email notification
+
 
 const createTransaction = asyncHandler(async (req, res) => {
-  const { toAccount, amount, idempotencyKey } = req.body;
+  const { toAccount,fromAccount, amount, idempotencyKey } = req.body;
 
   /**
-   * (1) Validate request
+     * (1) Validate request
    **/
 
   if (!fromAccount || !toAccount || !amount || !idempotencyKey) {
     throw new APiError(
       400,
-      "fromAccount, toAccount, amount and idempotencyKey are required",
+      "fromUserAccount, toAccount, amount and idempotencyKey are required",
     );
   }
 
-  // my account
-  const fromUserAccount = await accountModel.findOne({
-    userId: req.user._id,
+  const fromUserAccount = await Account.findOne({
+      _id: fromAccount,
+      user: req.user._id,
   });
 
-  if (!toUserAccount) {
-    throw new APiError(404, "invalid toAccount, account not found");
+  if (!fromUserAccount) {
+    throw new APiError(404, "invalid fromAccount, account not found or does not belong to you");
   }
 
-  // account to which i want to transfer money
   const toUserAccount = await Account.findOne({
     _id: toAccount,
   }).populate("user", "email name");
 
-  if (!fromUserAccount) {
-    throw new APiError(404, "invalid fromAccount, account not found");
+  if (!toUserAccount) {
+    throw new APiError(404, "invalid toAccount, account not found");
   }
 
   /**  (2) Validate idempotency key:
@@ -62,31 +51,19 @@ const createTransaction = asyncHandler(async (req, res) => {
 
   if (isTransactionExists) {
     if (isTransactionExists.status === "COMPLETED") {
-      throw new APiError(
-        409,
-        "Transaction with the same idempotency key already exists and is completed",
-      );
+      throw new APiError(409, "Transaction already processed");
     }
 
     if (isTransactionExists.status === "PENDING") {
-      throw new APiError(
-        409,
-        "Transaction with the same idempotency key already exists and is pending",
-      );
+      throw new APiError(409, "Transaction is still processing");
     }
 
     if (isTransactionExists.status === "FAILED") {
-      throw new APiError(
-        409,
-        "Transaction with the same idempotency key already exists and is failed",
-      );
+      throw new APiError(409, "Transaction already processed");
     }
 
     if (isTransactionExists.status === "REVERSED") {
-      throw new APiError(
-        409,
-        "Transaction with the same idempotency key already exists and is reversed",
-      );
+      throw new APiError(409, "Transaction already processed");
     }
   }
 
@@ -95,11 +72,11 @@ const createTransaction = asyncHandler(async (req, res) => {
    *   If either account is not active (e.g., FROZEN or CLOSED),
    **/
 
-  if (fromUserAccount.status === "ACTIVE") {
+  if (fromUserAccount.status !== "ACTIVE") {
     throw new APiError(403, "From account is not active");
   }
 
-  if (toUserAccount.status === "ACTIVE") {
+  if (toUserAccount.status !== "ACTIVE") {
     throw new APiError(403, "To account is not active");
   }
 
@@ -108,20 +85,21 @@ const createTransaction = asyncHandler(async (req, res) => {
    **/
   const balance = await fromUserAccount.getBalance();
 
-  if (balance < amount) {
-    throw new APiError(403, "Insufficient balance in from account");
+  if (balance < Number(amount)) {
+    throw new APiError(400, "Insufficient balance in from account");
   }
 
   /**
    * (5) Create transaction (PENDING)
    **/
   let transaction;
+  let session;
 
   try {
-    const session = await mongoose.startSession();
+    session = await mongoose.startSession();
     session.startTransaction();
 
-    transaction = await Transaction.create(
+    const createdTransactions = await Transaction.create(
       [
         {
           fromAccount: fromUserAccount._id,
@@ -133,11 +111,12 @@ const createTransaction = asyncHandler(async (req, res) => {
       ],
       { session },
     );
+    transaction = createdTransactions[0];
 
     /** 
        * (6) Create DEBIT ledger entry 
     **/
-    const debitLedgerEntry = await Ledger.create(
+    await Ledger.create(
       [
         {
           account: fromUserAccount._id,
@@ -149,14 +128,10 @@ const createTransaction = asyncHandler(async (req, res) => {
       { session },
     );
 
-     await (() => {
-            return new Promise((resolve) => setTimeout(resolve, 15 * 1000));
-        })()
-
     /** 
        * (7) Create CREDIT ledger entry 
     **/
-    const creditLedgerEntry = await Ledger.create(
+    await Ledger.create(
       [
         {
           account: toUserAccount._id,
@@ -172,10 +147,10 @@ const createTransaction = asyncHandler(async (req, res) => {
     /**
        * (8) Mark transaction COMPLETED 
     **/
-     await Transaction.findoneAndUpdate(
+      await Transaction.findOneAndUpdate(
          { _id:transaction._id },
          { status:"COMPLETED" },
-         {session}
+        { session }
       )   
 
     
@@ -183,39 +158,60 @@ const createTransaction = asyncHandler(async (req, res) => {
          * (9) Commit MongoDB session
        **/
 
-     await session.commitTransaction()
-     session.endSession()
-
-     
+     await session.commitTransaction();
 
   } catch (error) {
     throw new APiError(500, `Transaction failed: ${error.message}`);
+  } finally {
+    if (session) {
+      session.endSession();
+    }
   }
 
-  await sendTransactionEmail(
-    req.user.email,
-    req.user.name,
-    amount,
-    toUserAccount._id,
-    "DEBIT",
-  );
+  /** 
+       * (10) Send email notification 
+  **/
 
-  await sendTransactionEmail(
-    toUserAccount.user.email,
-    toUserAccount.user.name,
-    amount,
-    toUserAccount._id,
-    "CREDIT",
-  );
+  try {
+    if (req.user.email) {
+      await sendTransactionEmail(
+        req.user.email,
+        req.user.name,
+        amount,
+        toUserAccount._id,
+        "DEBIT",
+      );
+    }
+
+    if (toUserAccount.user?.email) {
+      await sendTransactionEmail(
+        toUserAccount.user.email,
+        toUserAccount.user.name,
+        amount,
+        toUserAccount._id,
+        "CREDIT",
+      );
+    }
+  } catch (emailError) {
+    console.error('Email notification failed:', emailError?.message);
+  }
 
   
   return res
     .status(201)
-    .json(new APiResponse(201, { transaction: null }, "Transaction template"));
+    .json(
+      new APiResponse(201, { transaction }, "Transaction completed successfully"),
+    );
 });
 
-const createInitialFundsTransaction = asyncHandler(async (_req, res) => {
+const createInitialFundsTransaction = asyncHandler(async (req, res) => {
   const { toAccount, amount, idempotencyKey } = req.body;
+
+
+
+  if (req.user.role !== "SYSTEM") {
+    throw new APiError(403, "Access Denied: Only the SYSTEM account can mint money.");
+  }
 
   if (!toAccount || !amount || !idempotencyKey) {
     throw new APiError(
@@ -227,15 +223,14 @@ const createInitialFundsTransaction = asyncHandler(async (_req, res) => {
   //account which add funds to my account
   const toUserAccount = await Account.findOne({
     _id: toAccount,
-  });
+  }).populate("user", "email name");
 
   if (!toUserAccount) {
     throw new APiError(404, "invalid toAccount, account not found");
   }
 
-  // my account
   const fromUserAccount = await Account.findOne({
-    _id: req.user._id,
+    user: req.user._id,
   });
 
   if (!fromUserAccount) {
@@ -249,47 +244,89 @@ const createInitialFundsTransaction = asyncHandler(async (_req, res) => {
   // it means that all the operations within this transaction will either succeed or fail together. If any operation fails, the entire transaction will be rolled back, ensuring data integrity and consistency.
   session.startTransaction();
 
-  const transaction = await Transaction({
-    fromAccount: fromUserAccount._id,
-    toAccount: toUserAccount._id,
-    amount,
-    idempotencyKey,
-    status: "PENDING",
-  });
-
-  const debitLedgerEntry = await Ledger.create([
-    {
-      account: fromUserAccount._id,
-      amount: amount,
-      transaction: transaction._id,
-      type: "DEBIT",
-    },
+  const createdTransactions = await Transaction.create(
+    [
+      {
+        fromAccount: fromUserAccount._id,
+        toAccount: toUserAccount._id,
+        amount,
+        idempotencyKey,
+        status: "PENDING",
+      },
+    ],
     { session },
-  ]);
+  );
+  const transaction = createdTransactions[0];
 
-  const creditLedgerEntry = await Ledger.create([
-    {
-      account: toUserAccount._id,
-      amount: amount,
-      transaction: transaction._id,
-      type: "CREDIT",
-    },
+  await Ledger.create(
+    [
+      {
+        account: fromUserAccount._id,
+        amount: amount,
+        transaction: transaction._id,
+        type: "DEBIT",
+      },
+    ],
     { session },
-  ]);
+  );
 
-  transaction.status = "COMPLETED";
-  await transaction.save({ session });
+  await Ledger.create(
+    [
+      {
+        account: toUserAccount._id,
+        amount: amount,
+        transaction: transaction._id,
+        type: "CREDIT",
+      },
+    ],
+    { session },
+  );
+
+  await Transaction.findOneAndUpdate(
+    { _id: transaction._id },
+    { status: "COMPLETED" },
+    { session },
+  );
 
   await session.commitTransaction();
   session.endSession();
 
+  /** 
+   * Send email notifications for initial funds transaction
+  **/
+
+  try {
+    if (toUserAccount.user?.email) {
+      await sendTransactionEmail(
+        toUserAccount.user.email,
+        toUserAccount.user.name,
+        amount,
+        toUserAccount._id,
+        "CREDIT",
+      );
+    }
+
+    if (req.user.email) {
+      await sendTransactionEmail(
+        req.user.email,
+        req.user.name,
+        amount,
+        fromUserAccount._id,
+        "DEBIT",
+      );
+    }
+  } catch (emailError) {
+    console.error('Email notification failed:', emailError?.message);
+    // Don't throw - transaction succeeded, just email failed
+  }
+
   return res
-    .status()
+    .status(201)
     .json(
       new APiResponse(
         201,
         { transaction },
-        "Initial funds transaction template",
+        "Initial funds transaction created successfully",
       ),
     );
 });
