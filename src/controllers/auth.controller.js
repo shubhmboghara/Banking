@@ -3,7 +3,7 @@ import APiResponse from "../util/ApiResponse.js";
 import asyncHandler from "../util/asyncHandler.js";
 import { User } from "../models/user.model.js";
 import { sessionCookieOptions } from "../config/session.js";
-import { sendRegistrationEmail } from "../services/email.service.js";
+import { sendRegistrationEmail, sendLoginEmail } from "../services/email.service.js";
 
 /**
  * - user register controller
@@ -66,6 +66,15 @@ const loginUser = asyncHandler(async (req, res) => {
   req.session.isLoggedIn = true;
 
   const loggedInUser = await User.findById(user._id).select("-password");
+
+  // send login notification (non-blocking for response)
+  (async () => {
+    try {
+      await sendLoginEmail(user.email, user.name);
+    } catch (err) {
+      console.error('Login email failed:', err?.message || err);
+    }
+  })();
 
   return res
     .status(200)
