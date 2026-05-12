@@ -10,6 +10,18 @@ const accountSchema = new Schema(
       index: true,
     },
 
+    accountType: {
+      type: String,
+      enum: ["SAVINGS", "CURRENT"],
+      default: "SAVINGS",
+    },
+
+    accountNumber:{
+      type: String,
+      unique:true,
+      required:[true,"Account number is required"],
+    },
+
     status: {
       type: String,
       enum: {
@@ -17,6 +29,11 @@ const accountSchema = new Schema(
         message: "Status can be either ACTIVE, FROZEN or CLOSED",
       },
       default: "ACTIVE",
+    },
+
+    mpin: {
+      type: String,
+      default: null,
     },
 
     currency: {
@@ -29,6 +46,10 @@ const accountSchema = new Schema(
     timestamps: true,
   },
 );
+
+
+
+
 
 accountSchema.index({ user: 1, status: 1 });
 
@@ -55,22 +76,18 @@ accountSchema.methods.getBalance = async function () {
     },
 
     {
-      $project:{
+      $project: {
         _id: 0,
-        balance:{ $subtract: ["$totalCredit","$totalDebit"]}
-      }  
-    }
-
-   
-
-    
-
+        balance: { $subtract: ["$totalCredit", "$totalDebit"] },
+      },
+    },
   ]);
 
   if (balanceData.length === 0) {
     return 0;
   }
-   return balanceData[0].balance;
-   
+  return balanceData[0].balance;
 };
+
+
 export const Account = model("Account", accountSchema);
