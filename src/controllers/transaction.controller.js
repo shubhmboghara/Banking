@@ -4,7 +4,7 @@ import asyncHandler from "../util/asyncHandler.js";
 import Transaction from "../models/transaction.model.js";
 import Ledger from "../models/ledger.model.js";
 import { Account } from "../models/account.model.js";
-import { sendTransactionEmail } from "../services/email.service.js";
+import { sendTransactionEmail, sendTransactionfailedEmail } from "../services/email.service.js";
 import mongoose from "mongoose";
 
 
@@ -161,6 +161,31 @@ const createTransaction = asyncHandler(async (req, res) => {
      await session.commitTransaction();
 
   } catch (error) {
+    // Send failure notification emails before throwing error
+    try {
+      if (req.user?.email) {
+        await sendTransactionfailedEmail(
+          req.user.email,
+          req.user.name,
+          amount,
+          toAccount,
+          "DEBIT",
+        );
+      }
+
+      if (toUserAccount?.user?.email) {
+        await sendTransactionfailedEmail(
+          toUserAccount.user.email,
+          toUserAccount.user.name,
+          amount,
+          toAccount,
+          "CREDIT",
+        );
+      }
+    } catch (emailError) {
+      console.error('Failed transaction email error:', emailError?.message);
+    }
+
     throw new APiError(500, `Transaction failed: ${error.message}`);
   } finally {
     if (session) {
@@ -239,57 +264,92 @@ const createInitialFundsTransaction = asyncHandler(async (req, res) => {
 
   // Check if transaction with the same idempotencyKey already exists
   //single and straightforward meaning: "Either everything will happen, or nothing will happen (All or Nothing)
-  const session = await mongoose.startSession();
+  let transaction;
+  let session;
 
-  // it means that all the operations within this transaction will either succeed or fail together. If any operation fails, the entire transaction will be rolled back, ensuring data integrity and consistency.
-  session.startTransaction();
+  try {
+    session = await mongoose.startSession();
 
-  const createdTransactions = await Transaction.create(
-    [
-      {
-        fromAccount: fromUserAccount._id,
-        toAccount: toUserAccount._id,
-        amount,
-        idempotencyKey,
-        status: "PENDING",
-      },
-    ],
-    { session },
-  );
-  const transaction = createdTransactions[0];
+    // it means that all the operations within this transaction will either succeed or fail together. If any operation fails, the entire transaction will be rolled back, ensuring data integrity and consistency.
+    session.startTransaction();
 
-  await Ledger.create(
-    [
-      {
-        account: fromUserAccount._id,
-        amount: amount,
-        transaction: transaction._id,
-        type: "DEBIT",
-      },
-    ],
-    { session },
-  );
+    const createdTransactions = await Transaction.create(
+      [
+        {
+          fromAccount: fromUserAccount._id,
+          toAccount: toUserAccount._id,
+          amount,
+          idempotencyKey,
+          status: "PENDING",
+        },
+      ],
+      { session },
+    );
+    transaction = createdTransactions[0];
 
-  await Ledger.create(
-    [
-      {
-        account: toUserAccount._id,
-        amount: amount,
-        transaction: transaction._id,
-        type: "CREDIT",
-      },
-    ],
-    { session },
-  );
+    await Ledger.create(
+      [
+        {
+          account: fromUserAccount._id,
+          amount: amount,
+          transaction: transaction._id,
+          type: "DEBIT",
+        },
+      ],
+      { session },
+    );
 
-  await Transaction.findOneAndUpdate(
-    { _id: transaction._id },
-    { status: "COMPLETED" },
-    { session },
-  );
+    await Ledger.create(
+      [
+        {
+          account: toUserAccount._id,
+          amount: amount,
+          transaction: transaction._id,
+          type: "CREDIT",
+        },
+      ],
+      { session },
+    );
 
-  await session.commitTransaction();
-  session.endSession();
+    await Transaction.findOneAndUpdate(
+      { _id: transaction._id },
+      { status: "COMPLETED" },
+      { session },
+    );
+
+    await session.commitTransaction();
+  } catch (error) {
+    // Send failure notification emails
+    try {
+      if (toUserAccount?.user?.email) {
+        await sendTransactionfailedEmail(
+          toUserAccount.user.email,
+          toUserAccount.user.name,
+          amount,
+          toUserAccount._id,
+          "CREDIT",
+        );
+      }
+
+      if (req.user?.email) {
+        await sendTransactionfailedEmail(
+          req.user.email,
+          req.user.name,
+          amount,
+          fromUserAccount._id,
+          "DEBIT",
+        );
+      }
+    } catch (emailError) {
+      console.error('Failed transaction email error:', emailError?.message);
+    }
+
+    throw new APiError(500, `Initial funds transaction failed: ${error.message}`);
+  } finally {
+    if (session) {
+      session.endSession();
+    }
+  }
 
   /** 
    * Send email notifications for initial funds transaction
