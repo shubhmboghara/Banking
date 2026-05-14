@@ -1,4 +1,4 @@
-import APiError from "../util/AppError.js";
+import APiError from "../util/ApiError.js";
 import asyncHandler from "../util/asyncHandler.js";
 import { User } from "../models/user.model.js";
 

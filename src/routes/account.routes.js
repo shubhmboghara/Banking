@@ -5,6 +5,8 @@ import {
   getUserAccounts,
   getAccountBalance,
 } from "../controllers/account.controller.js";
+import validateRequest from "../middleware/validateRequest.middleware.js";
+import { createAccountSchema, getAccountBalanceSchema } from "../validations/account.validator.js"; 
 
 const router = Router();
 
@@ -13,7 +15,7 @@ const router = Router();
  * - Create a new account
  * - Protected Route
  */
-router.post("/", verifySession, createAccount);
+router.post("/", verifySession, validateRequest(createAccountSchema), createAccount);
 
 /**
  * - GET /api/accounts/
@@ -25,6 +27,6 @@ router.get("/", verifySession, getUserAccounts);
 /**
  * - GET /api/accounts/balance/:accountId
  */
-  router.get("/balance/:accountId", verifySession, getAccountBalance);
+  router.get("/balance/:accountId", verifySession, validateRequest(getAccountBalanceSchema), getAccountBalance);
 
 export default router;

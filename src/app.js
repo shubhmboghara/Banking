@@ -5,17 +5,17 @@ import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import morgan from "morgan";
 import connectDB from "./config/db.js";
-import { sessionMiddleware, connectRedis } from "./config/session.js";
+import { createSessionMiddleware, connectRedis } from "./config/session.js";
 import authRouter from "./routes/auth.routes.js";
 import accountsRouter from "./routes/account.routes.js";
 import transactionsRouter from "./routes/transaction.routes.js";
 
 connectDB();
-await connectRedis();
+const redisConnected = await connectRedis();
 
 const app = express();
 
-app.use(sessionMiddleware);
+app.use(createSessionMiddleware(redisConnected));
 app.use(helmet());
 app.use(
   cors({

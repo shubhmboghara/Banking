@@ -1,17 +1,25 @@
 import APiResponse from "../util/ApiResponse.js";
-import APiError from "../util/AppError.js";
+import APiError from "../util/ApiError.js";
 import asyncHandler from "../util/asyncHandler.js";
-import { Account } from "../models/account.model.js";
+import {
+  OpenAccountService,
+  GetUserAccountsService,
+  GetAccountBalanceService,
+} from "../services/account.service.js";
 
 const createAccount = asyncHandler(async (req, res) => {
+  const { accountType,mpin } = req.body ;
   const user = req.user;
+
+  if(!mpin){
+    throw new APiError(400, "MPIN is required to open an account");
+  }
 
   if (!user) {
     throw new APiError(401, "Unauthorized");
   }
-  const account = await Account.create({
-    user: user._id,
-  });
+
+  const account = await OpenAccountService(user._id, accountType, mpin);
 
   return res
     .status(201)
@@ -25,7 +33,7 @@ const createAccount = asyncHandler(async (req, res) => {
 });
 
 const getUserAccounts = asyncHandler(async (req, res) => {
-  const accounts = await Account.find({ user: req.user._id });
+  const accounts = await GetUserAccountsService(req.user._id);
 
   return res
     .status(200)
@@ -45,23 +53,17 @@ const getAccountBalance = asyncHandler(async (req, res) => {
     throw new APiError(400, "Account ID is required");
   }
 
-  const account = await Account.findById({
-    _id: accountId,
-    user: req.user._id,
-  });
-
-  if (!account) {
-    throw new APiError(404, "Account not found");
-  }
-
-  const balance = await account.getBalance();
+  const balance  = await GetAccountBalanceService(
+    accountId,
+    req.user._id,
+  );
 
   return res
     .status(200)
     .json(
       new APiResponse(
         200,
-        { accountId: account._id, balance: balance },
+        { accountId: accountId, balance: balance  },
         "Balance fetched successfully",
       ),
     );

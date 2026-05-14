@@ -20,38 +20,74 @@ const sessionCookieOptions = {
   maxAge: 1000 * 60 * 60 * 24 * 7,
 };
 
-const redisClient = createClient({
-  url: process.env.REDIS_URL,
-});
 
-redisClient.on("error", (error) => {
-  console.error("Redis Client Error", error);
-});
+const redisUrl = process.env.REDIS_URL?.trim();
 
-redisClient.on("connect", () => {
-  console.log("Connected to Redis successfully");
-});
+const redisClient = redisUrl
+  ? createClient({ url: redisUrl })
+  : null;
+
+if (redisClient) {
+  redisClient.on("error", (error) => {
+    console.error("Redis Client Error", {
+      message: error?.message,
+      code: error?.code,
+      errno: error?.errno,
+      syscall: error?.syscall,
+      stack: error?.stack,
+    });
+  });
+
+  redisClient.on("connect", () => {
+    console.log("Connected to Redis successfully");
+  });
+
+  // Additional lifecycle logs to help diagnose connection resets
+  redisClient.on("end", () => {
+    console.warn("Redis connection closed (end)");
+  });
+
+  // Some redis client versions emit a 'reconnecting' event
+  if (typeof redisClient.on === "function") {
+    try {
+      redisClient.on("reconnecting", () => {
+        console.warn("Redis reconnecting...");
+      });
+    } catch (e) {
+      // ignore if event not supported
+    }
+  }
+}
 
 const connectRedis = async () => {
+  
   try {
     if (!redisClient.isOpen) {
       await redisClient.connect();
     }
+    return true;
   } catch (error) {
-    console.error("Failed to connect to Redis", error);
+    console.error("Failed to connect to Redis. Falling back to in-memory session store.", error);
+    return false;
   }
 };
 
-const sessionMiddleware = session({
-  store: new RedisStore({
-    client: redisClient,
-    prefix: "banking:session:",
-  }),
+const createSessionMiddleware = (useRedisStore = false) => {
+  const sessionOptions = {
+    secret: process.env.SESSION_SECRET,
+    resave: false, // Don't save session if unmodified
+    saveUninitialized: false, // Don't create a session until something is stored in it
+    cookie: sessionCookieOptions,
+  };
 
-  secret: process.env.SESSION_SECRET,
-  resave: false, // Don't save session if unmodified
-  saveUninitialized: false, // Don't create a session until something is stored in it
-  cookie: sessionCookieOptions,
-});
+  if (useRedisStore && redisClient) {
+    sessionOptions.store = new RedisStore({
+      client: redisClient,
+      prefix: "banking:session:",
+    });
+  }
 
-export { sessionMiddleware, sessionCookieOptions, connectRedis };
+  return session(sessionOptions);
+};
+
+export { createSessionMiddleware, sessionCookieOptions, connectRedis };

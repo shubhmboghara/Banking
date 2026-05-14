@@ -1,5 +1,5 @@
 import { Schema, model } from "mongoose";
-import APiError from "../util/AppError.js";
+import APiError from "../util/ApiError.js";
 
 const ledgerSchema = new Schema({
   account: {

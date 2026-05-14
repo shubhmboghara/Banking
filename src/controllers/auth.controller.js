@@ -1,14 +1,17 @@
-import APiError from "../util/AppError.js";
+import APiError from "../util/ApiError.js";
 import APiResponse from "../util/ApiResponse.js";
 import asyncHandler from "../util/asyncHandler.js";
-import { User } from "../models/user.model.js";
 import { sessionCookieOptions } from "../config/session.js";
-import { sendRegistrationEmail, sendLoginEmail } from "../services/email.service.js";
+import {
+  RegisterUserService,
+  loginUserService,
+} from "../services/auth.service.js";
 
 /**
  * - user register controller
  * - POST /api/auth/register
  */
+
 const registerUser = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
 
@@ -16,21 +19,7 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new APiError(400, "Name, email and password are required");
   }
 
-  const isExists = await User.findOne({ email });
-
-  if (isExists) {
-    throw new APiError(422, "User with this email already exists");
-  }
-
-  const newUser = await User.create({ name, email, password });
-
-  if (!newUser) {
-    throw new APiError(500, "Failed to create user");
-  }
-
-  const createdUser = await User.findById(newUser._id).select("-password");
-
-  await sendRegistrationEmail(email, name);
+  const createdUser = await RegisterUserService(name, email, password);
 
   return res
     .status(201)
@@ -50,31 +39,10 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new APiError(400, "Email and password are required");
   }
 
-  const user = await User.findOne({ email }).select("+password");
+  const { loggedInUser, userId } = await loginUserService(email, password);
 
-  if (!user) {
-    throw new APiError(401, "Invalid credentials");
-  }
-
-  const isPasswordValid = await user.isPasswordCorrect(password);
-
-  if (!isPasswordValid) {
-    throw new APiError(401, "Invalid credentials");
-  }
-
-  req.session.userId = user._id;
+  req.session.userId = userId;
   req.session.isLoggedIn = true;
-
-  const loggedInUser = await User.findById(user._id).select("-password");
-
-  // send login notification (non-blocking for response)
-  (async () => {
-    try {
-      await sendLoginEmail(user.email, user.name);
-    } catch (err) {
-      console.error('Login email failed:', err?.message || err);
-    }
-  })();
 
   return res
     .status(200)
@@ -93,8 +61,6 @@ const logoutUser = asyncHandler(async (req, res) => {
       throw new APiError(500, "Failed to log out");
     }
   });
-
-  res.clearCookie("connect.sid", sessionCookieOptions);
 
   return res
     .status(200)

@@ -16,11 +16,11 @@ const accountSchema = new Schema(
       default: "SAVINGS",
     },
 
-    accountNumber:{
-      type: String,
-      unique:true,
-      required:[true,"Account number is required"],
-    },
+    // accountNumber:{
+    //   type: String,
+    //   unique:true,
+    //   required:[true,"Account number is required"],
+    // },
 
     status: {
       type: String,
@@ -33,7 +33,10 @@ const accountSchema = new Schema(
 
     mpin: {
       type: String,
-      default: null,
+      maxlength: [6, "MPIN must be 6 digits"],
+      minlength: [6, "MPIN must be 6 digits"],
+      required: [true, "MPIN is required"],
+
     },
 
     currency: {
