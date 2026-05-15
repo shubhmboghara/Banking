@@ -15,6 +15,7 @@ const CreateTransactionService = async (
   idempotencyKey,
   userId,
   isSystemTransaction = false,
+  mpin,
 ) => {
   const numAmount = Number(amount);
 
@@ -60,15 +61,15 @@ const CreateTransactionService = async (
 
   let fromUserAccount;
   if (isSystemTransaction) {
-    fromUserAccount = await Account.findOne({ user: userId }).populate(
-      "user",
-      "email name",
-    );
+    fromUserAccount = await Account.findOne({ user: userId })
+      .populate("user", "email name")
+      .select("+mpin");
   } else {
     fromUserAccount = await Account.findOne({
       _id: fromAccount,
       user: userId,
-    }).populate("user", "email name");
+    }).populate("user", "email name")
+      .select("+mpin");
   }
 
   if (!fromUserAccount) {
@@ -78,6 +79,12 @@ const CreateTransactionService = async (
     );
   }
 
+  const isMPINValid = await fromUserAccount.isMPINCorrect(mpin);
+
+  if (!isMPINValid) {
+    throw new APiError(401, "Invalid MPIN provided");
+  }
+
   const toUserAccount = await Account.findOne({
     _id: toAccount,
   }).populate("user", "email name");
@@ -85,7 +92,6 @@ const CreateTransactionService = async (
   if (!toUserAccount) {
     throw new APiError(404, "invalid toAccount, account not found");
   }
-
 
   /**  (2) Check account status:
    *   This step verifies that both the sender's and receiver's accounts are in an "ACTIVE" state.
@@ -119,9 +125,7 @@ const CreateTransactionService = async (
 
   try {
     session = await mongoose.startSession();
-    session.startTransaction(
-      { maxCommitTimeMS: 10000 }
-    );
+    session.startTransaction({ maxCommitTimeMS: 10000 });
 
     const createdTransactions = await Transaction.create(
       [
@@ -162,7 +166,7 @@ const CreateTransactionService = async (
     /**
      * (6) Mark transaction COMPLETED
      **/
-    
+
     await Transaction.findOneAndUpdate(
       { _id: transaction._id },
       { status: "COMPLETED" },
@@ -243,7 +247,7 @@ const CreateTransactionService = async (
     console.error("Email notification failed:", emailError?.message);
   }
 
-  return  transaction
+  return transaction;
 };
 
 export { CreateTransactionService };

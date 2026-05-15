@@ -1,22 +1,27 @@
 import { z } from "zod";
 
-createAccountSchema = z.object({
+const createAccountSchema = z.object({
   body: z.object({
     accountType: z
-      .enum(["SAVINGS", "CHECKING"], {
-        invalid_type_error: "Account type must be either SAVINGS or CHECKING",
+      .string()
+      .trim()
+      .toUpperCase()
+      .pipe(
+        z.enum(["SAVINGS", "CURRENT"], {
+          invalid_type_error: "Account type must be either SAVINGS or CURRENT",
+        }),
+      )
+      .optional(),
+
+    mpin: z
+      .string({
+        required_error: "MPIN is required to open an account",
+        invalid_type_error: "MPIN must be a string",
       })
       .trim()
-      .optional(),
+      .min(1, "MPIN is required")
+      .length(6, "MPIN must be exactly 6 digits"),
   }),
-
-  mpin: z
-    .number({
-      required_error: "MPIN is required to open an account",
-      invalid_type_error: "MPIN must be a number",
-    })
-    .max(6, "MPIN must be at most 6 digits long")
-    .min(6, "MPIN must be at least 6 digits long"),
 });
 
 const getAccountBalanceSchema = z.object({
@@ -26,7 +31,10 @@ const getAccountBalanceSchema = z.object({
         required_error: "Account ID is required",
         invalid_type_error: "Account ID must be a string",
       })
-      .trim(),
+      .trim()
+      .min(1, "Account ID is required")
+      .length(24, "Account ID must be a valid 24-character hex string"),
+
   }),
 });
 

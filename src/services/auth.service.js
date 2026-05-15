@@ -18,8 +18,14 @@ const RegisterUserService = async (name, email, password) => {
     throw new APiError(500, "Failed to create user");
   }
 
+     const user = createdUser.toObject()
+     delete user.password
+
   await sendRegistrationEmail(email, name);
-  return createdUser;
+
+  
+
+  return user;
 };
 
 const loginUserService = async (email, password) => {

@@ -5,8 +5,9 @@ import {
   getUserAccounts,
   getAccountBalance,
 } from "../controllers/account.controller.js";
-import validateRequest from "../middleware/validateRequest.middleware.js";
+import validateRequest from "../middleware/validate.middleware.js";
 import { createAccountSchema, getAccountBalanceSchema } from "../validations/account.validator.js"; 
+import APiError from "../util/ApiError.js";
 
 const router = Router();
 
@@ -27,6 +28,10 @@ router.get("/", verifySession, getUserAccounts);
 /**
  * - GET /api/accounts/balance/:accountId
  */
-  router.get("/balance/:accountId", verifySession, validateRequest(getAccountBalanceSchema), getAccountBalance);
+router.get("/balance", verifySession, (req, res, next) => {
+  next(new APiError(400, "Account ID is required"));
+});
+
+router.get("/balance/:accountId", verifySession, validateRequest(getAccountBalanceSchema), getAccountBalance);
 
 export default router;

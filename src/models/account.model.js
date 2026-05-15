@@ -1,5 +1,6 @@
 import { Schema, model } from "mongoose";
 import ledgerModel from "./ledger.model.js";
+import bcrypt from "bcryptjs";  
 
 const accountSchema = new Schema(
   {
@@ -12,6 +13,7 @@ const accountSchema = new Schema(
 
     accountType: {
       type: String,
+      touppercase: true,
       enum: ["SAVINGS", "CURRENT"],
       default: "SAVINGS",
     },
@@ -36,6 +38,7 @@ const accountSchema = new Schema(
       maxlength: [6, "MPIN must be 6 digits"],
       minlength: [6, "MPIN must be 6 digits"],
       required: [true, "MPIN is required"],
+      select: false,
 
     },
 
@@ -91,6 +94,29 @@ accountSchema.methods.getBalance = async function () {
   }
   return balanceData[0].balance;
 };
+
+
+// in  Registration time  MPIN  is stored in  RAM  and so it check isModified(123) , 
+// perviously sate undefined  -> current sate 123 so   isModified is true but  we have ! NOT operator so it become flase and it go it hash 
+// than it store in db
+
+//but in case of upadte perviously sate == current sate have 123  so isModified is false but we have ! NOT operator so it become true and it skip hash and save as it is
+// than it store in db 
+
+accountSchema.pre("save", async function () {
+   if(!this.isModified("mpin")) return
+
+   const hash = await bcrypt.hash(this.mpin, 10);
+   this.mpin = hash; 
+  
+})
+
+accountSchema.methods.isMPINCorrect = async function (mpin) {
+  return await bcrypt.compare(mpin, this.mpin);
+};
+
+
+
 
 
 export const Account = model("Account", accountSchema);

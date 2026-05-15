@@ -8,16 +8,20 @@ const OpenAccountService = async (userId, accountType, mpin) => {
     mpin: mpin,
   });
 
+
   if (!account) {
     throw new APiError(500, "Failed to create account");
   }
 
-  return account;
+  const acc =  account.toObject();
+  delete acc.mpin
+
+  return acc;
 };
 
 const GetUserAccountsService = async (userId) => {
   const accounts = await Account.find({ user: userId });
-  
+
   if (!accounts?.length) {
     throw new APiError(404, "No accounts found for this user");
   }
@@ -26,7 +30,6 @@ const GetUserAccountsService = async (userId) => {
 };
 
 const GetAccountBalanceService = async (accountId, userId) => {
-
   const account = await Account.findOne({
     _id: accountId,
     user: userId,
@@ -38,16 +41,11 @@ const GetAccountBalanceService = async (accountId, userId) => {
 
   const balance = await account.getBalance();
 
-  if(balance === null || balance === undefined) { 
+  if (balance === null || balance === undefined) {
     throw new APiError(500, "Failed to fetch account balance");
   }
-
 
   return balance;
 };
 
-export  {
-  OpenAccountService,
-  GetUserAccountsService,
-  GetAccountBalanceService,
-};
+export { OpenAccountService, GetUserAccountsService, GetAccountBalanceService };

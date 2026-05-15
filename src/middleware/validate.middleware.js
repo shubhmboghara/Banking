@@ -1,17 +1,24 @@
-import APiError from "../util/ApiError";
+import APiError from "../util/ApiError.js";
 
-export const validateRequest = (schema) => (req, res, next) => {
+const validateRequest = (schema) => (req, res, next) => {
+  const result = schema.safeParse({
+    body: req.body,
+    query: req.query,
+    params: req.params,
+  });
 
-    try {
-        schema.parse({
-            body: req.body,
-            query: req.query,
-            params: req.params,
-        })
-        next();
-    } catch (error) {
-        const errorMessage = error.errors.map((err) => err.message).join(", ");
-        next(new APiError(400, errorMessage));
-    }
-}
+  if (!result.success) {
+    const errorMessage = result.error.issues
+      .map((err) => err.message)
+      .join(", ");
 
+    return next(new APiError(400, errorMessage));
+  }
+  
+  req.body = result.data.body;  
+  Object.assign(req.query, result.data.query ?? {});
+  Object.assign(req.params, result.data.params ?? {}); 
+  next();
+};
+
+export default validateRequest;

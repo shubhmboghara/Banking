@@ -1,7 +1,7 @@
 import APiError from "../util/ApiError.js";
 import APiResponse from "../util/ApiResponse.js";
 import asyncHandler from "../util/asyncHandler.js";
-import { sessionCookieOptions } from "../config/session.js";
+import sessionCookieOptions from "../config/sessioncookie.config.js";
 import {
   RegisterUserService,
   loginUserService,

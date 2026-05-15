@@ -4,10 +4,10 @@ import {
   createTransaction,
   createInitialFundsTransaction,
 } from "../controllers/transaction.controller.js";
-import validateRequest from "../middleware/validateRequest.middleware.js";
+import validateRequest from "../middleware/validate.middleware.js";
 import {
-  createTransactionSchema,
-  createInitialFundsTransactionSchema,
+  CreateTransactionSchema,
+  InitialFundsTransactionSchema,
 } from "../validations/transaction.validator.js";
 
 const router = Router();
@@ -16,7 +16,7 @@ const router = Router();
  * - POST /api/transactions/
  * - Create a new transaction
  */
-router.post("/", verifySession,validateRequest(createTransactionSchema), createTransaction);
+router.post("/", verifySession,validateRequest(CreateTransactionSchema), createTransaction);
 
 /**
  * - POST /api/transactions/system/initial-funds
@@ -25,7 +25,7 @@ router.post("/", verifySession,validateRequest(createTransactionSchema), createT
 router.post(
   "/system/initial-funds",
   verifySession,
-  validateRequest(createInitialFundsTransactionSchema),
+  validateRequest(InitialFundsTransactionSchema),
   createInitialFundsTransaction,
 );
 
