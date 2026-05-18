@@ -2,9 +2,11 @@ import { createClient } from "redis";
 
 const redisUrl = process.env.REDIS_URL?.trim();
 
-const redisClient = redisUrl
-  ? createClient({ url: redisUrl })
-  : null;
+if (!redisUrl) {
+  throw new Error('REDIS_URL is required. Cannot start banking server without Redis.')
+}
+
+const redisClient = createClient({ url: redisUrl })
 
 if (redisClient) {
   redisClient.on("error", (error) => {
@@ -36,13 +38,13 @@ if (redisClient) {
 
 const connectRedis = async () => {
   try {
-    if (redisClient && !redisClient.isOpen) {
+    if (!redisClient.isOpen) {
       await redisClient.connect();
     }
     return true;
   } catch (error) {
-    console.error("Failed to connect to Redis. Falling back to in-memory session store.", error);
-    return false;
+    console.error('Failed to connect to Redis:', error)
+    throw new Error('Redis connection required for banking session storage.')
   }
 };
 

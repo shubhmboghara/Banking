@@ -4,7 +4,7 @@ import APiError from "../util/ApiError.js";
 const ledgerSchema = new Schema({
   account: {
     type: Schema.Types.ObjectId,
-    ref: "account",
+    ref: "Account",
     required: [true, "Ledger must be associated with an account"],
     index: true,
     immutable: true,
@@ -16,7 +16,7 @@ const ledgerSchema = new Schema({
   },
   transaction: {
     type: Schema.Types.ObjectId,
-    ref: "transaction",
+    ref: "Transaction",
     required: [true, "Ledger must be associated with a transaction"],
     index: true,
     immutable: true,

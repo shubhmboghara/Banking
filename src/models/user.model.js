@@ -40,12 +40,18 @@ const userSchema = new Schema(
 userSchema.pre("save", async function name() {
   if (!this.isModified("password")) return;
 
-  const hash = await bcrypt.hash(this.password, 10);
+  const hash = await bcrypt.hash(this.password, 13);
   this.password = hash;
 });
 
 userSchema.methods.isPasswordCorrect = async function (password) {
   return await bcrypt.compare(password, this.password);
+};
+
+userSchema.methods.toJSON = function () {
+  const userObj = this.toObject();
+  delete userObj.password;
+  return userObj;
 };
 
 export const User = mongoose.model("User", userSchema);

@@ -12,8 +12,8 @@
   // 'lax' is the safer default for local development.
   sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
 
-  // Calculation: 1000ms * 60s * 60m * 24h * 7d = 7 Days.
-  maxAge: 1000 * 60 * 60 * 24 * 7,
+  // 15 minutes 
+  maxAge: 15 * 60 * 1000
 };
 
 export default sessionCookieOptions

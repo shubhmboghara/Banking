@@ -13,7 +13,7 @@ const accountSchema = new Schema(
 
     accountType: {
       type: String,
-      touppercase: true,
+      uppercase: true,  
       enum: ["SAVINGS", "CURRENT"],
       default: "SAVINGS",
     },
@@ -52,9 +52,6 @@ const accountSchema = new Schema(
     timestamps: true,
   },
 );
-
-
-
 
 
 accountSchema.index({ user: 1, status: 1 });
@@ -106,13 +103,19 @@ accountSchema.methods.getBalance = async function () {
 accountSchema.pre("save", async function () {
    if(!this.isModified("mpin")) return
 
-   const hash = await bcrypt.hash(this.mpin, 10);
+   const hash = await bcrypt.hash(this.mpin, 12);
    this.mpin = hash; 
   
 })
 
 accountSchema.methods.isMPINCorrect = async function (mpin) {
   return await bcrypt.compare(mpin, this.mpin);
+};
+
+accountSchema.methods.toJSON = function () {
+  const accountObj = this.toObject();
+  delete accountObj.mpin;
+  return accountObj;
 };
 
 

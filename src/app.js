@@ -16,7 +16,7 @@ const redisConnected = await connectRedis();
 
 const app = express();
 
-app.use(createSessionMiddleware(redisConnected));
+app.use(createSessionMiddleware())
 app.use(helmet());
 app.use(
   cors({

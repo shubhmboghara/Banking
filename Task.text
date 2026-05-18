@@ -1,0 +1,78 @@
+Project tasks: add realistic bank user fields and flows
+
+Goal: expand the `User` model and add the necessary routes/controllers/validation and migration tasks so the app supports KYC, phone verification, 2FA, and production-safe login behavior.
+
+High priority (must implement first):
+- Update `src/models/user.model.js` with these fields:
+	- `phone`, `phoneVerified`, `phoneVerifiedAt`
+	- `dob` (date of birth)
+	- `address` subdocument: `line1,line2,city,state,postalCode,country`
+	- `kycStatus` enum: `NONE|PENDING|VERIFIED|REJECTED`
+	- `kycDocuments` array (type,url,uploadedAt)
+	- `isTwoFactorEnabled`, `twoFactorSecret` (store secret select:false)
+	- `lastLoginAt`, `failedLoginAttempts`, `lockedUntil`, `metadata`
+	- Indexes: unique `email`, sparse unique `phone`
+
+- Update registration/login flows:
+	- `src/services/auth.service.js` `RegisterUserService` should accept and store `phone`, `dob`, `address` and validate phone uniqueness.
+	- `loginUserService` should update `lastLoginAt`, reset `failedLoginAttempts` on success, and increment `failedLoginAttempts` + set `lockedUntil` after max retries.
+	- Ensure controllers and responses never return `password` or `twoFactorSecret`.
+
+- Validation updates:
+	- Extend `src/validations/auth.validator.js` register schema to accept optional `phone`, `dob`, `address` fields and validate formats.
+
+- Session & security checks:
+	- Before opening an account (`POST /api/v1/accounts`), require `kycStatus === VERIFIED` (or make configurable).
+	- Require `phoneVerified` for sensitive operations (configurable).
+
+Medium priority:
+- KYC upload + admin review endpoints:
+	- Add `POST /api/v1/kyc` (protected) to upload documents (store urls in `kycDocuments`, set `kycStatus = PENDING`). Implement file storage or accept external URL.
+	- Add admin routes `GET /api/v1/admin/kyc/:userId` and `PATCH /api/v1/admin/kyc/:userId` to view and update `kycStatus`.
+	- Create `src/controllers/kyc.controller.js`, `src/routes/kyc.routes.js` and hook them into `app.js` (admin routes protected by role check).
+
+- Seed/system user & system account:
+	- Add `scripts/seedSystem.js` to create a `SYSTEM` user and associated system account for `/system/initial-funds` usage.
+
+Low priority / Nice to have:
+- Migration & backfill:
+	- Add `scripts/migrate-users.js` to backfill `kycStatus: NONE`, add missing indexes, and optionally mask legacy fields.
+
+- Tests & docs:
+	- Add unit tests for registration, login lockout, KYC flows, and transaction mpin checks.
+	- Update `README.md` with new env requirements and KYC/admin steps.
+
+- Email templates & notifications:
+	- Add emails for KYC received, KYC approved/rejected, phone verification, account-locked alerts.
+
+Files to edit (suggested):
+- `src/models/user.model.js` (schema)
+- `src/services/auth.service.js` (register/login logic)
+- `src/controllers/auth.controller.js` (accept new fields)
+- `src/validations/auth.validator.js` (schemas)
+- `src/routes/auth.routes.js` (no route change but ensure validation applied)
+- `src/controllers/kyc.controller.js` (new)
+- `src/routes/kyc.routes.js` (new)
+- `src/services/email.service.js` (optional new templates)
+- `src/scripts/seedSystem.js` (new)
+
+Priority checklist (short):
+1. Update model schema + indexes
+2. Update register/login services and validation
+3. Add seed script for `SYSTEM` user
+4. Add KYC endpoints and admin review
+5. Add migration script + run in staging
+6. Add tests and update README
+
+Security & operational notes:
+- Never return `password` or `twoFactorSecret` in API responses.
+- Store sensitive fields with `select: false` and only expose through secure admin endpoints if needed.
+- Rate-limit login and sensitive endpoints; lock accounts after N failed attempts.
+- Ensure KYC docs are stored securely (S3 with restricted access) and URLs are time-limited if required.
+
+If you'd like, I can now:
+- A) generate the `Task.text` entry updates (done),
+- B) implement `src/models/user.model.js` changes, or
+- C) create the `scripts/seedSystem.js` and a small migration script.
+
+Pick one action and I'll proceed.
