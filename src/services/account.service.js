@@ -3,22 +3,24 @@ import APiError from "../util/ApiError.js";
 import generateNewAccountNumber from "./accountNumber.service.js";
 
 const OpenAccountService = async (userId, accountType, mpin) => {
-  const newAccount =  Account({
+  const newAccount = Account({
     user: userId,
     accountType: accountType,
     mpin: mpin,
   });
 
-  const ValidationError = newAccount.validateSync(["user", "accountType", "mpin"]);
+  const ValidationError = newAccount.validateSync([
+    "user",
+    "accountType",
+    "mpin",
+  ]);
 
-  if (ValidationError) { 
+  if (ValidationError) {
     throw new APiError(400, "Invalid account data", ValidationError.errors);
   }
-       
 
-  newAccount.accountNumber =  await generateNewAccountNumber()
+  newAccount.accountNumber = await generateNewAccountNumber();
   const account = await newAccount.save();
-
 
   if (!account) {
     throw new APiError(500, "Failed to create account");
@@ -39,9 +41,10 @@ const GetUserAccountsService = async (userId) => {
   return accounts;
 };
 
-const GetAccountBalanceService = async (accountId, userId) => {
+const GetAccountBalanceService = async (accountNumber, userId) => {
+  
   const account = await Account.findOne({
-    _id: accountId,
+    accountNumber: accountNumber,
     user: userId,
   });
 

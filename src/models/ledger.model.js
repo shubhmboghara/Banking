@@ -9,6 +9,14 @@ const ledgerSchema = new Schema({
     index: true,
     immutable: true,
   },
+
+  counterparty: {
+    type: Schema.Types.ObjectId,
+    ref: "Account",
+    required: [true, "Counterparty is required to know where the money came from/went"],
+    immutable: true,
+  },
+
   amount: {
     type: Number,
     required: [true, "Amount is required for creating a ledger entry"],

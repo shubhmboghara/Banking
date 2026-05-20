@@ -236,7 +236,7 @@ The application expects values such as:
 
 - `POST /api/v1/accounts`
 - `GET /api/v1/accounts`
-- `GET /api/v1/accounts/balance/:accountId`
+- `GET /api/v1/accounts/balance/:accountNumber`
 
 ### Transactions
 

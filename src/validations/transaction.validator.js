@@ -9,7 +9,7 @@ const CreateTransactionSchema = z.object({
       })
       .trim()
       .min(1, "toAccount is required")
-      .length(24, "toAccount must be a valid 24-character hex string"),
+      .length(16, "toAccount must be a valid 16-digit account number"),
 
     fromAccount: z
       .string({
@@ -18,7 +18,7 @@ const CreateTransactionSchema = z.object({
       })
       .trim()
       .min(1, "fromAccount is required")
-      .length(24, "fromAccount must be a valid 24-character hex string"),
+      .length(16, "fromAccount must be a valid 16-digit account number"),
 
     amount: z
       .number({
@@ -55,7 +55,7 @@ const InitialFundsTransactionSchema = z.object({
       })
       .trim()
       .min(1, "toAccount is required")
-      .length(24, "toAccount must be a valid 24-character hex string"),
+      .length(16, "toAccount must be a valid 16-digit account number"),
 
     amount: z
       .number({

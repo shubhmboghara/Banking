@@ -115,7 +115,16 @@ accountSchema.methods.isMPINCorrect = async function (mpin) {
 
 accountSchema.methods.toJSON = function () {
   const accountObj = this.toObject();
+  // remove sensitive or internal fields
   delete accountObj.mpin;
+  delete accountObj.__v;
+  delete accountObj._id;
+
+  // ensure accountNumber is present in the serialized object
+  if (!accountObj.accountNumber && this.accountNumber) {
+    accountObj.accountNumber = this.accountNumber;
+  }
+
   return accountObj;
 };
 

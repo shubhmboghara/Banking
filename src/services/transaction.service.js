@@ -60,13 +60,17 @@ const CreateTransactionService = async (
   }
 
   let fromUserAccount;
+
   if (isSystemTransaction) {
+
     fromUserAccount = await Account.findOne({ user: userId })
       .populate("user", "email name")
       .select("+mpin");
-  } else {
+  } 
+  else {
+    
     fromUserAccount = await Account.findOne({
-      _id: fromAccount,
+      accountNumber: fromAccount,
       user: userId,
     }).populate("user", "email name")
       .select("+mpin");
@@ -86,7 +90,7 @@ const CreateTransactionService = async (
   }
 
   const toUserAccount = await Account.findOne({
-    _id: toAccount,
+    accountNumber: toAccount,
   }).populate("user", "email name");
 
   if (!toUserAccount) {
@@ -149,12 +153,14 @@ const CreateTransactionService = async (
       [
         {
           account: fromUserAccount._id,
+          counterparty: toUserAccount._id,
           amount: numAmount,
           transaction: transaction._id,
           type: "DEBIT",
         },
         {
           account: toUserAccount._id,
+          counterparty: fromUserAccount._id,
           amount: numAmount,
           transaction: transaction._id,
           type: "CREDIT",
@@ -204,7 +210,7 @@ const CreateTransactionService = async (
             toUserAccount.user.email,
             toUserAccount.user.name,
             numAmount,
-            toAccount,
+            toUserAccount.accountNumber,
             "CREDIT",
           )
         : null,
@@ -229,7 +235,7 @@ const CreateTransactionService = async (
         fromUserAccount.user.email,
         fromUserAccount.user.name,
         numAmount,
-        toUserAccount._id,
+        toUserAccount.accountNumber,
         "DEBIT",
       );
     }
@@ -239,7 +245,7 @@ const CreateTransactionService = async (
         toUserAccount.user.email,
         toUserAccount.user.name,
         numAmount,
-        toUserAccount._id,
+        toUserAccount.accountNumber,
         "CREDIT",
       );
     }
@@ -247,7 +253,11 @@ const CreateTransactionService = async (
     console.error("Email notification failed:", emailError?.message);
   }
 
-  return transaction;
+  const transactionResponse = transaction.toObject();
+  transactionResponse.fromAccount = fromUserAccount.accountNumber;
+  transactionResponse.toAccount = toUserAccount.accountNumber;
+
+  return transactionResponse;
 };
 
 export { CreateTransactionService };

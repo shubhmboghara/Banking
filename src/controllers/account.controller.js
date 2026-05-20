@@ -47,14 +47,14 @@ const getUserAccounts = asyncHandler(async (req, res) => {
 });
 
 const getAccountBalance = asyncHandler(async (req, res) => {
-  const { accountId } = req.params;
+  const { accountNumber } = req.params;
 
-  if (!accountId) {
-    throw new APiError(400, "Account ID is required");
+  if (!accountNumber) {
+    throw new APiError(400, "Account number is required");
   }
 
   const balance  = await GetAccountBalanceService(
-    accountId,
+    accountNumber,
     req.user._id,
   );
 
@@ -63,7 +63,7 @@ const getAccountBalance = asyncHandler(async (req, res) => {
     .json(
       new APiResponse(
         200,
-        { accountId: accountId, balance: balance  },
+        { accountNumber: accountNumber, balance: balance  },
         "Balance fetched successfully",
       ),
     );

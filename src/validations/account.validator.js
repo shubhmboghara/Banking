@@ -26,14 +26,15 @@ const createAccountSchema = z.object({
 
 const getAccountBalanceSchema = z.object({
   params: z.object({
-    accountId: z
+    accountNumber: z
       .string({
-        required_error: "Account ID is required",
-        invalid_type_error: "Account ID must be a string",
+        required_error: "Account number is required",
+        invalid_type_error: "Account number must be a string",
       })
       .trim()
-      .min(1, "Account ID is required")
-      .length(24, "Account ID must be a valid 24-character hex string"),
+      .min(16, "Account number is required")
+      .length(16, "Account number must be exactly 16 digits")
+      .regex(/^\d{16}$/, "Account number must contain only digits"),
 
   }),
 });

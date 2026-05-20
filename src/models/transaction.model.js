@@ -8,6 +8,7 @@ const transactionSchema = new Schema(
       required: [true, "Transaction must be associated with a from account"],
       index: true,
     },
+    
     toAccount: {
       type: Schema.Types.ObjectId,
       ref: "Account",
