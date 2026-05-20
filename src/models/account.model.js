@@ -1,6 +1,6 @@
 import { Schema, model } from "mongoose";
 import ledgerModel from "./ledger.model.js";
-import bcrypt from "bcryptjs";  
+import bcrypt from "bcryptjs";
 
 const accountSchema = new Schema(
   {
@@ -13,16 +13,21 @@ const accountSchema = new Schema(
 
     accountType: {
       type: String,
-      uppercase: true,  
+      uppercase: true,
       enum: ["SAVINGS", "CURRENT"],
       default: "SAVINGS",
     },
 
-    // accountNumber:{
-    //   type: String,
-    //   unique:true,
-    //   required:[true,"Account number is required"],
-    // },
+    accountNumber: {
+      type: String,
+      required: [true, "Account number is required"],
+      unique: true,
+      immutable: true,
+      validate: {
+        validator: (v) => /^\d{16}$/.test(v),
+        message: "Account number must be exactly 16 digits",
+      },
+    },
 
     status: {
       type: String,
@@ -39,7 +44,6 @@ const accountSchema = new Schema(
       minlength: [6, "MPIN must be 6 digits"],
       required: [true, "MPIN is required"],
       select: false,
-
     },
 
     currency: {
@@ -52,7 +56,6 @@ const accountSchema = new Schema(
     timestamps: true,
   },
 );
-
 
 accountSchema.index({ user: 1, status: 1 });
 
@@ -92,21 +95,19 @@ accountSchema.methods.getBalance = async function () {
   return balanceData[0].balance;
 };
 
-
-// in  Registration time  MPIN  is stored in  RAM  and so it check isModified(123) , 
-// perviously sate undefined  -> current sate 123 so   isModified is true but  we have ! NOT operator so it become flase and it go it hash 
+// in  Registration time  MPIN  is stored in  RAM  and so it check isModified(123) ,
+// perviously sate undefined  -> current sate 123 so   isModified is true but  we have ! NOT operator so it become flase and it go it hash
 // than it store in db
 
 //but in case of upadte perviously sate == current sate have 123  so isModified is false but we have ! NOT operator so it become true and it skip hash and save as it is
-// than it store in db 
+// than it store in db
 
 accountSchema.pre("save", async function () {
-   if(!this.isModified("mpin")) return
+  if (!this.isModified("mpin")) return;
 
-   const hash = await bcrypt.hash(this.mpin, 12);
-   this.mpin = hash; 
-  
-})
+  const hash = await bcrypt.hash(this.mpin, 12);
+  this.mpin = hash;
+});
 
 accountSchema.methods.isMPINCorrect = async function (mpin) {
   return await bcrypt.compare(mpin, this.mpin);
@@ -117,9 +118,5 @@ accountSchema.methods.toJSON = function () {
   delete accountObj.mpin;
   return accountObj;
 };
-
-
-
-
 
 export const Account = model("Account", accountSchema);

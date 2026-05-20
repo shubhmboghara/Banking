@@ -10,4 +10,13 @@ async function connectDB() {
   }
 }
 
+
+mongoose.connection.on("disconnected",()=>{
+  console.warn("MongoDB disconnected");
+})
+
+mongoose.connection.on("reconnected" ,()=>{
+  console.warn("MongoDB reconnected");
+})
+
 export default connectDB;

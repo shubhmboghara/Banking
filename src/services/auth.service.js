@@ -18,8 +18,7 @@ const RegisterUserService = async (name, email, password) => {
     throw new APiError(500, "Failed to create user");
   }
 
-     const user = createdUser.toObject()
-     delete user.password
+    const user = createdUser.toJSON();
 
   await sendRegistrationEmail(email, name);
 

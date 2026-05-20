@@ -1,40 +1,42 @@
-import "dotenv/config";
-import express from "express";
-import cors from "cors";
-import cookieParser from "cookie-parser";
-import helmet from "helmet";
-import morgan from "morgan";
-import connectDB from "../src/config/db.config.js";
-import createSessionMiddleware  from "./middleware/session.middleware.js";
-import { connectRedis } from "./config/redis.config.js";
-import authRouter from "./routes/auth.routes.js";
-import accountsRouter from "./routes/account.routes.js";
-import transactionsRouter from "./routes/transaction.routes.js";
+  import "dotenv/config";
+  import express from "express";
+  import cors from "cors";
+  import cookieParser from "cookie-parser";
+  import helmet from "helmet";
+  import morgan from "morgan";
+  import connectDB from "../src/config/db.config.js";
+  import createSessionMiddleware  from "./middleware/session.middleware.js";
+  import { connectRedis } from "./config/sessionRedis.config.js";
+  import { connectSequenceRedis } from "./config/sequenceRedis.config.js";
+  import authRouter from "./routes/auth.routes.js";
+  import accountsRouter from "./routes/account.routes.js";
+  import transactionsRouter from "./routes/transaction.routes.js";
 
-connectDB();
-const redisConnected = await connectRedis();
+  connectDB();
+  connectRedis();
+  connectSequenceRedis();
 
-const app = express();
+  const app = express();
 
-app.use(createSessionMiddleware())
-app.use(helmet());
-app.use(
-  cors({
-    origin: process.env.corsOrigin,
-    credentials: true,
-  }),
-);
-app.use(express.json());
-app.use(express.urlencoded({ extended: true, limit: "16kb" }));
-app.use(cookieParser());
-app.use(process.env.NODE_ENV === "production" ? morgan("combined") : morgan("dev"));
+  app.use(createSessionMiddleware())
+  app.use(helmet());
+  app.use(
+    cors({
+      origin: process.env.corsOrigin,
+      credentials: true,
+    }),
+  );
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true, limit: "16kb" }));
+  app.use(cookieParser());
+  app.use(process.env.NODE_ENV === "production" ? morgan("combined") : morgan("dev"));
 
-app.get("/health", (_req, res) => {
-  res.status(200).json({ success: true, message: "Server is healthy" });
-});
+  app.get("/health", (_req, res) => {
+    res.status(200).json({ success: true, message: "Server is healthy" });
+  });
 
-app.use("/api/v1/auth", authRouter);
-app.use("/api/v1/accounts", accountsRouter);
-app.use("/api/v1/transactions", transactionsRouter);
+  app.use("/api/v1/auth", authRouter);
+  app.use("/api/v1/accounts", accountsRouter);
+  app.use("/api/v1/transactions", transactionsRouter);
 
-export default app;
+  export default app;

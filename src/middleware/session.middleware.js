@@ -1,6 +1,6 @@
 import session from "express-session";
 import { RedisStore } from "connect-redis";
-import { redisClient } from "../config/redis.config.js";
+import { redisClient } from "../config/sessionRedis.config.js";
 import sessionCookieOptions  from "../config/sessioncookie.config.js";
 
 
