@@ -24,7 +24,29 @@ const userSchema = new Schema(
     role: {
       type: String,
       enum: ["USER", "SYSTEM"],
-      default: "USER" 
+      default: "USER",
+    },
+
+    email: {
+      type: String,
+      required: [true, "Email is required"],
+      trim: true,
+      lowercase: true,
+      unique: [true, "Email already exists"],
+      match: [
+        /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
+        "Please fill a valid email address",
+      ],
+    },
+
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    emailVerifiedAt: {
+      type: Date,
+      default: null,
     },
 
     password: {

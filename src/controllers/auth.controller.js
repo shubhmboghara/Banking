@@ -6,6 +6,7 @@ import {
   RegisterUserService,
   loginUserService,
 } from "../services/auth.service.js";
+im
 
 /**
  * - user register controller
@@ -15,9 +16,7 @@ import {
 const registerUser = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
 
-  if (!name || !email || !password) {
-    throw new APiError(400, "Name, email and password are required");
-  }
+  
 
   const createdUser = await RegisterUserService(name, email, password);
 
@@ -35,9 +34,7 @@ const registerUser = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  if (!email || !password) {
-    throw new APiError(400, "Email and password are required");
-  }
+  
 
   const { loggedInUser, userId } = await loginUserService(email, password);
 
@@ -83,5 +80,37 @@ const getCurrentUser = asyncHandler(async (req, res) => {
       ),
     );
 });
+
+const sendEmailOtp = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  await SendEmailOtpService(email)
+
+  return res
+    .status(200)
+    .json(
+      new APiResponse(
+        200,
+        {},
+        "OTP sent to email successfully",
+      ),
+    );
+})
+
+const verifyEmailOtp = asyncHandler(async (req, res) => {
+  const { email, otp } = req.body;
+
+  await VerifyEmailOtpService(email, otp)
+
+  return res
+    .status(200)
+    .json(
+      new APiResponse(
+        200,
+        {},
+        "OTP verified successfully",
+      ),
+    );
+} ) 
 
 export { registerUser, loginUser, logoutUser, getCurrentUser };

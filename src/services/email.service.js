@@ -36,6 +36,46 @@ const sendEmail = async (to, subject, html) => {
   }
 };
 
+
+const sendOtpEmail = async (to, otp, name) => {
+  to = to.trim();
+  const safeName = name || "there";
+  const subject = `${otp} is your VibeCart Verification Code`;
+  const html = `
+    <div style="margin:0;padding:0;background:#f5f7fb;font-family:Arial,Helvetica,sans-serif;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f5f7fb;padding:32px 16px;">
+        <tr>
+          <td align="center">
+          
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 12px 30px rgba(15,23,42,0.08);">
+              <tr>
+                <td style="padding:32px 32px 24px;background:linear-gradient(135deg,#0f172a 0%,#1d4ed8 100%);color:#ffffff;">
+                  <div style="font-size:14px;letter-spacing:1.4px;text-transform:uppercase;opacity:0.85;">${emailBrand}</div>
+                  <h1 style="margin:12px 0 0;font-size:28px;line-height:1.2;">Your OTP Code [${otp}]</h1>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:32px;color:#0f172a;">
+                  <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Use the ${otp} OTP code to complete your action:</p>
+                  <div style="padding:16px 20px;border-radius:14px;background:#eff6ff;color:#1d4ed8;font-weight:700;display:inline-block;font-size:24px;letter-spacing:2px;">${otp}</div>
+                  <p style="margin:16px 0 0;font-size:14px;color:#475569;">This OTP is valid for the next 10 minutes. If you did not request this code, please ignore this email.</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:0 32px 32px;color:#475569;font-size:14px;line-height:1.6;">
+                  <p style="margin:0;">Best regards,<br>${emailBrand} Team</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </div>`;
+
+  await sendEmail(to, subject, html);
+};
+
+
 async function sendRegistrationEmail(userEmail, name) {
   const safeName = name || "there";
   const subject = "Welcome to Backend Ledger";
@@ -199,6 +239,7 @@ const sendTransactionfailedEmail = async (
 
 export {
   sendEmail,
+  sendOtpEmail,
   sendRegistrationEmail,
   sendLoginEmail,
   sendTransactionEmail,

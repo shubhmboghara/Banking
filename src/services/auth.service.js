@@ -1,5 +1,6 @@
 import { User } from "../models/user.model.js";
 import APiError from "../util/ApiError.js";
+import { generateAndSendOtp, verifyOtp } from "./otp.service.js";
 import {
   sendRegistrationEmail,
   sendLoginEmail,
@@ -12,19 +13,27 @@ const RegisterUserService = async (name, email, password) => {
     throw new APiError(422, "User with this email already exists");
   }
 
-  const createdUser = await User.create({ name, email, password });
+  const createdUser = await User.create({
+    name,
+    email,
+    password,
+    emailVerified: false,
+  });
 
   if (!createdUser) {
     throw new APiError(500, "Failed to create user");
   }
 
-    const user = createdUser.toJSON();
+  await generateAndSendOtp(email, name, "EMAIL_VERIFICATION");
+
+  const user = createdUser.toJSON();
 
   await sendRegistrationEmail(email, name);
 
-  
-
-  return user;
+  return {
+    message: "Registration successful. Check your email for OTP.",
+    email,
+  };
 };
 
 const loginUserService = async (email, password) => {
@@ -52,5 +61,3 @@ const loginUserService = async (email, password) => {
 
   return { loggedInUser, userId: user._id };
 };
-
-export { RegisterUserService, loginUserService };
